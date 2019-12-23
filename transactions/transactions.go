@@ -44,11 +44,13 @@ func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum
 		return "", err
 	}
 
-	if forceCentralNonceAPI {
-		apiHost = "https://wallet-api.elrond.com"
-	}
+	var accountData api.Account
 
-	accountData, err := api.GetAccount(sender, apiHost)
+	if forceCentralNonceAPI {
+		accountData, err = api.GetAccount(sender, "https://wallet-api.elrond.com")
+	} else {
+		accountData, err = api.GetAccount(sender, apiHost)
+	}
 
 	if err != nil {
 		return "", errors.New("failed to retrieve account data")
