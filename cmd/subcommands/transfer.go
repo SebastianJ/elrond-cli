@@ -34,6 +34,10 @@ func TransferCommand() cli.Command {
 				Usage: "How many tokens to send per transaction",
 				Value: 1.0,
 			},
+			cli.BoolFlag{
+				Name:  "maximum",
+				Usage: "Send the maximum available amount of tokens",
+			},
 			cli.Int64Flag{
 				Name:  "nonce",
 				Usage: "What nonce to use for sending the transaction",
@@ -76,6 +80,7 @@ func sendTransactionCommand(ctx *cli.Context) error {
 		return errors.New("please provide a valid receiver address using --to ADDRESS")
 	}
 
+	maximum := ctx.Bool("maximum")
 	amount := ctx.Float64("amount")
 	txData := ctx.String("data")
 	apiHost := ctx.GlobalString("api-endpoint")
@@ -89,7 +94,7 @@ func sendTransactionCommand(ctx *cli.Context) error {
 		return err
 	}
 
-	txHexHash, err := transactions.SendTransaction(encodedKey, receiver, amount, nonce, txData, gasPrice, gasLimit, apiHost)
+	txHexHash, err := transactions.SendTransaction(encodedKey, receiver, amount, maximum, nonce, txData, gasPrice, gasLimit, apiHost)
 
 	if err != nil {
 		return err
