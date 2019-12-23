@@ -18,7 +18,7 @@ import (
 )
 
 // SendTransaction - broadcast a transaction to the blockchain
-func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum bool, nonce int64, txData string, gasPrice uint64, gasLimit uint64, apiHost string) (string, error) {
+func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum bool, nonce int64, txData string, gasPrice uint64, gasLimit uint64, apiHost string, forceCentralNonceAPI bool) (string, error) {
 	signer, privKey, pubKey, err := generateCryptoSuite(encodedKey)
 
 	if err != nil {
@@ -42,6 +42,10 @@ func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum
 
 	if err != nil {
 		return "", err
+	}
+
+	if forceCentralNonceAPI {
+		apiHost = "https://wallet-api.elrond.com"
 	}
 
 	accountData, err := api.GetAccount(sender, apiHost)
@@ -92,7 +96,7 @@ func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum
 		// If we've sent an invalid nonce - sleep 3 seconds and then retry again using a fresh nonce
 		if strings.Contains(txError.Error(), "transaction generation failed: invalid nonce") {
 			time.Sleep(3 * time.Second)
-			return SendTransaction(encodedKey, receiver, amount, maximum, nonce, txData, gasPrice, gasLimit, apiHost)
+			return SendTransaction(encodedKey, receiver, amount, maximum, nonce, txData, gasPrice, gasLimit, apiHost, forceCentralNonceAPI)
 		}
 
 		return "", txError

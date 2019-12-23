@@ -58,6 +58,10 @@ func TransferCommand() cli.Command {
 				Usage: "The economics configuration file to load",
 				Value: "./config/economics.toml",
 			},
+			cli.BoolFlag{
+				Name:  "force-central-nonce-api",
+				Usage: "Force the usage of https://wallet-api.elrond.com for checking nonces",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
 			return sendTransactionCommand(ctx)
@@ -86,6 +90,7 @@ func sendTransactionCommand(ctx *cli.Context) error {
 	apiHost := ctx.GlobalString("api-endpoint")
 	nonce := ctx.Int64("nonce")
 	sleep := ctx.Int64("sleep")
+	forceCentralNonceAPI := ctx.Bool("force-central-nonce-api")
 
 	configPath := ctx.String("config")
 	gasPrice, gasLimit, err := parseGasSettings(configPath)
@@ -94,7 +99,7 @@ func sendTransactionCommand(ctx *cli.Context) error {
 		return err
 	}
 
-	txHexHash, err := transactions.SendTransaction(encodedKey, receiver, amount, maximum, nonce, txData, gasPrice, gasLimit, apiHost)
+	txHexHash, err := transactions.SendTransaction(encodedKey, receiver, amount, maximum, nonce, txData, gasPrice, gasLimit, apiHost, forceCentralNonceAPI)
 
 	if err != nil {
 		return err
