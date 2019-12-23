@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -71,8 +70,8 @@ func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum
 		realAmount = utils.ConvertFloatAmountToBigInt(amount)
 	}
 
-	converted, _ := utils.ConvertNumeralStringToBigFloat(realAmount.String())
-	fmt.Println(fmt.Sprintf("Sending amount: %f (%s)", converted, realAmount))
+	//converted, _ := utils.ConvertNumeralStringToBigFloat(realAmount.String())
+	//fmt.Println(fmt.Sprintf("Sending amount: %f (%s)", converted, realAmount))
 
 	tx := transaction.Transaction{
 		Nonce:    realNonce,
