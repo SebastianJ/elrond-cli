@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/SebastianJ/elrond-cli/api"
 	cmdConfig "github.com/SebastianJ/elrond-cli/config/cmd"
-	"github.com/SebastianJ/elrond-cli/utils"
+	"github.com/SebastianJ/elrond-sdk/api"
+	"github.com/SebastianJ/elrond-sdk/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

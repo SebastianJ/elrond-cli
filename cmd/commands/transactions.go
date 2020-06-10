@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SebastianJ/elrond-cli/api"
 	cmdConfig "github.com/SebastianJ/elrond-cli/config/cmd"
-	"github.com/SebastianJ/elrond-cli/transactions"
+	"github.com/SebastianJ/elrond-sdk/api"
+	"github.com/SebastianJ/elrond-sdk/transactions"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
