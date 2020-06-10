@@ -31,7 +31,7 @@ func init() {
 	cmdTx.Flags().StringVar(&cmdConfig.Tx.Data, "data", "", "Transaction data to use for sending the transaction")
 	cmdTx.Flags().Int64Var(&cmdConfig.Tx.Sleep, "sleep", -1, "How long the CLI should sleep after sending a transaction")
 	cmdTx.Flags().StringVar(&cmdConfig.Tx.ConfigPath, "config", "./config/configs/economics.toml", "The economics configuration file to load")
-	cmdTx.Flags().BoolVar(&cmdConfig.Tx.ForceCentralAPIForNonceLookup, "force-central-api-for-nonce-lookup", false, "Force the usage of https://wallet-api.elrond.com for checking nonces when using local node endpoints")
+	cmdTx.Flags().BoolVar(&cmdConfig.Tx.ForceAPINonceLookups, "force-api-nonce-lookups", false, "Force the usage of https://wallet-api.elrond.com for checking nonces when using local node endpoints")
 
 	RootCmd.AddCommand(cmdTx)
 }
@@ -43,7 +43,7 @@ func sendTransaction(cmd *cobra.Command) error {
 
 	client := api.Client{
 		Host:                 cmdConfig.Persistent.Endpoint,
-		ForceAPINonceLookups: cmdConfig.Tx.ForceCentralAPIForNonceLookup,
+		ForceAPINonceLookups: cmdConfig.Tx.ForceAPINonceLookups,
 	}
 	client.Initialize()
 
