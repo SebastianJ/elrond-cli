@@ -2,14 +2,14 @@ package api
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 )
 
-type sendTxRequest struct {
+// TransactionData - represents the transaction data sent to a node API to send transactions
+type TransactionData struct {
 	Sender    string `json:"sender"`
 	Receiver  string `json:"receiver"`
 	Value     string `json:"value"`
@@ -26,45 +26,20 @@ type sendTxResponse struct {
 }
 
 // SendTransaction performs the actual HTTP request to send the transaction
-func SendTransaction(
-	nonce uint64,
-	sender string,
-	receiver string,
-	value string,
-	gasPrice uint64,
-	gasLimit uint64,
-	data string,
-	signature []byte,
-	apiHost string) (string, error) {
+func (client *Client) SendTransaction(txData TransactionData) (string, error) {
+	url := fmt.Sprintf("%s/transaction/send", client.Host)
 
-	url := fmt.Sprintf("%s/transaction/send", apiHost)
-	hexSignature := hex.EncodeToString(signature)
-
-	txReq := sendTxRequest{
-		Sender:    sender,
-		Receiver:  receiver,
-		Value:     value,
-		Data:      data,
-		Nonce:     nonce,
-		GasPrice:  gasPrice,
-		GasLimit:  gasLimit,
-		Signature: hexSignature,
-	}
-
-	jsonData, err := json.Marshal(txReq)
-
+	jsonData, err := json.Marshal(txData)
 	if err != nil {
 		return "", err
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-
 	if err != nil {
 		return "", err
 	}
 
-	body, err := PerformRequest(url, req)
-
+	body, err := client.PerformRequest(url, req)
 	if err != nil {
 		return "", err
 	}

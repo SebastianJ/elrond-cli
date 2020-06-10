@@ -2,103 +2,54 @@ package transactions
 
 import (
 	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"math/big"
 	"strings"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-go/core"
+	"github.com/ElrondNetwork/elrond-go/core/pubkeyConverter"
 	"github.com/ElrondNetwork/elrond-go/crypto"
-	"github.com/ElrondNetwork/elrond-go/crypto/signing"
-	"github.com/ElrondNetwork/elrond-go/crypto/signing/kyber"
-	"github.com/ElrondNetwork/elrond-go/crypto/signing/kyber/singlesig"
+	"github.com/ElrondNetwork/elrond-go/crypto/signing/ed25519/singlesig"
 	"github.com/ElrondNetwork/elrond-go/data/transaction"
+	"github.com/ElrondNetwork/elrond-go/marshal"
 	"github.com/SebastianJ/elrond-cli/api"
+	cliCrypto "github.com/SebastianJ/elrond-cli/crypto"
 	"github.com/SebastianJ/elrond-cli/utils"
 )
 
-// SendTransaction - broadcast a transaction to the blockchain
-func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum bool, nonce int64, txData string, gasPrice uint64, gasLimit uint64, apiHost string, forceCentralNonceAPI bool) (string, error) {
-	signer, privKey, pubKey, err := generateCryptoSuite(encodedKey)
+var (
+	converter core.PubkeyConverter
+)
 
+func init() {
+	converter, _ = pubkeyConverter.NewBech32PubkeyConverter(32)
+}
+
+// SendTransaction - generates and broadcasts a transaction to the blockchain
+func SendTransaction(
+	walletPath string,
+	receiver string,
+	amount float64,
+	maximum bool,
+	nonce int64,
+	txData string,
+	gasParams GasParams,
+	client api.Client,
+) (string, error) {
+	signer, privateKey, _, err := cliCrypto.DecryptWallet(walletPath)
 	if err != nil {
 		return "", err
 	}
 
-	pubKeyBytes, err := pubKey.ToByteArray()
-
-	if err != nil {
-		return "", err
-	}
-
-	sender := hex.EncodeToString(pubKeyBytes)
-	hexSender, err := hex.DecodeString(sender)
-
-	if err != nil {
-		return "", err
-	}
-
-	hexReceiver, err := hex.DecodeString(receiver)
-
-	if err != nil {
-		return "", err
-	}
-
-	var accountData api.Account
-
-	if forceCentralNonceAPI {
-		accountData, err = api.GetAccount(sender, "https://wallet-api.elrond.com")
-	} else {
-		accountData, err = api.GetAccount(sender, apiHost)
-	}
-
-	if err != nil {
-		return "", errors.New("failed to retrieve account data")
-	}
-
-	var realNonce uint64
-
-	if nonce > 0 {
-		realNonce = uint64(nonce)
-	} else {
-		realNonce = accountData.Nonce
-	}
-
-	gasLimit = gasLimit + uint64(len(txData))
-
-	var realAmount *big.Int
-
-	if maximum {
-		gasCost := utils.CalculateTotalGasCost(gasPrice, gasLimit)
-		apiAmount, _ := new(big.Int).SetString(accountData.Balance, 10)
-		realAmount = utils.CalculateAmountWithoutGasCost(apiAmount, gasCost)
-	} else {
-		realAmount = utils.ConvertFloatAmountToBigInt(amount)
-	}
-
-	//converted, _ := utils.ConvertNumeralStringToBigFloat(realAmount.String())
-	//fmt.Println(fmt.Sprintf("Sending amount: %f (%s)", converted, realAmount))
-
-	tx := transaction.Transaction{
-		Nonce:    realNonce,
-		SndAddr:  hexSender,
-		RcvAddr:  hexReceiver,
-		Value:    realAmount,
-		Data:     txData,
-		GasPrice: gasPrice,
-		GasLimit: gasLimit,
-	}
-
-	txBuff, _ := json.Marshal(&tx)
-	signature, _ := signer.Sign(privKey, txBuff)
-
-	txHexHash, txError := api.SendTransaction(realNonce, sender, receiver, realAmount.String(), gasPrice, gasLimit, txData, signature, apiHost)
+	_, apiData, err := GenerateAndSignTransaction(privateKey, signer, receiver, amount, maximum, nonce, txData, gasParams, client)
+	client.Initialize()
+	txHexHash, txError := client.SendTransaction(apiData)
 
 	if txError != nil {
 		// If we've sent an invalid nonce - sleep 3 seconds and then retry again using a fresh nonce
 		if strings.Contains(txError.Error(), "transaction generation failed: invalid nonce") {
 			time.Sleep(3 * time.Second)
-			return SendTransaction(encodedKey, receiver, amount, maximum, nonce, txData, gasPrice, gasLimit, apiHost, forceCentralNonceAPI)
+			return SendTransaction(walletPath, receiver, amount, maximum, nonce, txData, gasParams, client)
 		}
 
 		return "", txError
@@ -107,19 +58,129 @@ func SendTransaction(encodedKey []byte, receiver string, amount float64, maximum
 	return txHexHash, nil
 }
 
-func generateCryptoSuite(encodedKey []byte) (signer *singlesig.SchnorrSigner, privKey crypto.PrivateKey, pubKey crypto.PublicKey, err error) {
-	signer = &singlesig.SchnorrSigner{}
-	suite := kyber.NewBlakeSHA256Ed25519()
-	decodedKey, err := hex.DecodeString(string(encodedKey))
+// GenerateAndSignTransaction - generates and signs a transaction
+func GenerateAndSignTransaction(
+	privateKey crypto.PrivateKey,
+	signer *singlesig.Ed25519Signer,
+	receiver string,
+	amount float64,
+	maximum bool,
+	nonce int64,
+	txData string,
+	gasParams GasParams,
+	client api.Client,
+) (transaction.Transaction, api.TransactionData, error) {
+	tx, apiData, err := GenerateTransaction(privateKey, receiver, amount, maximum, nonce, txData, gasParams, client)
 
-	keyGen := signing.NewKeyGenerator(suite)
-
-	privKey, err = keyGen.PrivateKeyFromByteArray(decodedKey)
+	signature, err := signTransaction(privateKey, signer, tx)
 	if err != nil {
-		return nil, nil, nil, err
+		return transaction.Transaction{}, api.TransactionData{}, err
 	}
 
-	pubKey = privKey.GeneratePublic()
+	hexSignature := hex.EncodeToString(signature)
+	apiData.Signature = hexSignature
 
-	return signer, privKey, pubKey, err
+	return tx, apiData, nil
+}
+
+// GenerateTransaction - generates a new transaction using the supplied parameters
+func GenerateTransaction(
+	privateKey crypto.PrivateKey,
+	receiver string,
+	amount float64,
+	maximum bool,
+	nonce int64,
+	txData string,
+	gasParams GasParams,
+	client api.Client,
+) (transaction.Transaction, api.TransactionData, error) {
+	senderBytes, err := privateKey.GeneratePublic().ToByteArray()
+	if err != nil {
+		return transaction.Transaction{}, api.TransactionData{}, err
+	}
+
+	sender := converter.Encode(senderBytes)
+	if err != nil {
+		return transaction.Transaction{}, api.TransactionData{}, err
+	}
+
+	receiverBytes, err := converter.Decode(receiver)
+
+	account, err := client.GetAccount(sender)
+	if err != nil {
+		return transaction.Transaction{}, api.TransactionData{}, err
+	}
+
+	realNonce := getNonce(&account, nonce)
+
+	if len(txData) > 0 {
+		gasParams.GasLimit = gasParams.GasLimit + (uint64(len(txData)) * gasParams.GasPerDataByte)
+	}
+
+	var realAmount *big.Int
+	if maximum {
+		realAmount = calculateMaximumAmount(&account, gasParams.GasPrice, gasParams.GasLimit)
+	} else {
+		realAmount = utils.ConvertFloatAmountToBigInt(amount)
+	}
+
+	//converted, _ := utils.ConvertNumeralStringToBigFloat(realAmount.String())
+	//fmt.Println(fmt.Sprintf("Sending amount: %f (%s)", converted, realAmount))
+
+	tx := transaction.Transaction{
+		SndAddr:  senderBytes,
+		RcvAddr:  receiverBytes,
+		Value:    realAmount,
+		Data:     []byte(txData),
+		Nonce:    realNonce,
+		GasPrice: gasParams.GasPrice,
+		GasLimit: gasParams.GasLimit,
+	}
+
+	apiData := api.TransactionData{
+		Sender:   sender,
+		Receiver: receiver,
+		Value:    realAmount.String(),
+		Data:     txData,
+		Nonce:    realNonce,
+		GasPrice: gasParams.GasPrice,
+		GasLimit: gasParams.GasLimit,
+	}
+
+	return tx, apiData, nil
+}
+
+func signTransaction(privateKey crypto.PrivateKey, signer *singlesig.Ed25519Signer, tx transaction.Transaction) ([]byte, error) {
+	marshaler := &marshal.TxJsonMarshalizer{}
+	txBuff, err := tx.GetDataForSigning(converter, marshaler)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := signer.Sign(privateKey, txBuff)
+	if err != nil {
+		return nil, err
+	}
+
+	return signature, nil
+}
+
+func getNonce(accountData *api.Account, nonce int64) uint64 {
+	var realNonce uint64
+
+	if nonce > 0 {
+		realNonce = uint64(nonce)
+	} else if accountData != nil {
+		realNonce = accountData.Nonce
+	}
+
+	return realNonce
+}
+
+func calculateMaximumAmount(accountData *api.Account, gasPrice uint64, gasLimit uint64) *big.Int {
+	gasCost := utils.CalculateTotalGasCost(gasPrice, gasLimit)
+	apiAmount, _ := new(big.Int).SetString(accountData.Balance, 10)
+	realAmount := utils.CalculateAmountWithoutGasCost(apiAmount, gasCost)
+
+	return realAmount
 }

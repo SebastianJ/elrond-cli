@@ -22,14 +22,20 @@ type AccountWrapper struct {
 }
 
 // GetAccount fetches the desired account's balance as well as nonce
-func GetAccount(address string, apiHost string) (Account, error) {
-	url := fmt.Sprintf("%s/address/%s", apiHost, address)
+func (client *Client) GetAccount(address string) (Account, error) {
+	host := client.Host
+
+	if client.ForceAPINonceLookups {
+		host = defaultEndpoint
+	}
+
+	url := fmt.Sprintf("%s/address/%s", host, address)
 	req, err := http.NewRequest("GET", url, nil)
 
 	var response AccountWrapper
 	var accountResponse Account
 
-	body, err := PerformRequest(url, req)
+	body, err := client.PerformRequest(url, req)
 
 	if err != nil {
 		return accountResponse, err
@@ -42,8 +48,14 @@ func GetAccount(address string, apiHost string) (Account, error) {
 }
 
 // GetBalance fetches the balance of a specific account
-func GetBalance(address string, apiHost string) (Account, error) {
-	url := fmt.Sprintf("%s/address/%s/balance", apiHost, address)
+func (client *Client) GetBalance(address string) (Account, error) {
+	host := client.Host
+
+	if client.ForceAPINonceLookups {
+		host = defaultEndpoint
+	}
+
+	url := fmt.Sprintf("%s/address/%s/balance", host, address)
 	req, err := http.NewRequest("GET", url, nil)
 
 	var accountResponse Account
@@ -52,7 +64,7 @@ func GetBalance(address string, apiHost string) (Account, error) {
 		return accountResponse, err
 	}
 
-	body, err := PerformRequest(url, req)
+	body, err := client.PerformRequest(url, req)
 
 	if err != nil {
 		return accountResponse, err

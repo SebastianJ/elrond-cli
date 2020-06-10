@@ -3,40 +3,26 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"runtime"
 
-	cmd "github.com/SebastianJ/elrond-cli/cmd/subcommands"
-	"github.com/urfave/cli"
+	cmd "github.com/SebastianJ/elrond-cli/cmd/commands"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "Elrond CLI"
-	app.Version = fmt.Sprintf("%s/%s-%s", runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	app.Usage = "Interact with Elrond's blockchain using CLI commands"
+	// Force usage of Go's own DNS implementation
+	os.Setenv("GODEBUG", "netdns=go")
 
-	app.Authors = []cli.Author{
-		{
-			Name:  "Sebastian Johnsson",
-			Email: "",
+	cmd.VersionWrap = fmt.Sprintf("%s/%s-%s", runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	cmd.RootCmd.AddCommand(&cobra.Command{
+		Use:   "version",
+		Short: "Show version",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Fprintf(os.Stderr, "SebastianJ (C) 2020. %v, version %s/%s-%s\n", path.Base(os.Args[0]), runtime.Version(), runtime.GOOS, runtime.GOARCH)
+			os.Exit(0)
+			return nil
 		},
-	}
-
-	app.Commands = []cli.Command{}
-	app.Commands = append(app.Commands, cmd.TransferCommand())
-	app.Commands = append(app.Commands, cmd.BalanceCommand())
-
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "api-endpoint",
-			Usage: "Which API endpoint to use for API commands",
-			Value: "https://wallet-api.elrond.com",
-		},
-	}
-
-	err := app.Run(os.Args)
-	if err != nil {
-		fmt.Println("error: " + err.Error())
-		os.Exit(1)
-	}
+	})
+	cmd.Execute()
 }
