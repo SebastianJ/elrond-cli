@@ -7,6 +7,7 @@ import (
 	cmdConfig "github.com/SebastianJ/elrond-cli/config/cmd"
 	"github.com/SebastianJ/elrond-sdk/api"
 	"github.com/SebastianJ/elrond-sdk/transactions"
+	sdkWallet "github.com/SebastianJ/elrond-sdk/wallet"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -47,13 +48,21 @@ func sendTransaction(cmd *cobra.Command) error {
 	}
 	client.Initialize()
 
-	gasParams, err := transactions.ParseGasSettings(cmdConfig.Tx.ConfigPath)
+	defaultGasParams, err := transactions.ParseGasSettings(cmdConfig.Tx.ConfigPath)
 	if err != nil {
 		return err
 	}
 
-	txHexHash, err := transactions.SendTransaction(
-		cmdConfig.Tx.WalletPath,
+	// Make a copy of the default gas params that can be modified when processing the tx
+	gasParams := defaultGasParams
+
+	wallet, err := sdkWallet.Decrypt(cmdConfig.Tx.WalletPath)
+	if err != nil {
+		return err
+	}
+
+	txHash, err := transactions.SendTransaction(
+		wallet,
 		cmdConfig.Tx.To,
 		cmdConfig.Tx.Amount,
 		cmdConfig.Tx.MaximumAmount,
@@ -66,7 +75,7 @@ func sendTransaction(cmd *cobra.Command) error {
 		return err
 	}
 
-	fmt.Println(fmt.Sprintf("Success! Your pending transaction hash is: %s", txHexHash))
+	fmt.Println(fmt.Sprintf("Success! Your pending transaction hash is: %s", txHash))
 
 	if cmdConfig.Tx.Sleep > 0 {
 		time.Sleep(time.Duration(cmdConfig.Tx.Sleep) * time.Second)
