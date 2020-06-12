@@ -15,13 +15,13 @@ env := GO111MODULE=on
 DIR := ${CURDIR}
 
 all:
-	$(env) go build -o $(dist) -ldflags="$(ldflags)" cmd/main.go
+	source scripts/bls_build_flags.sh && $(env) go build -o $(dist) -ldflags="$(ldflags)" cmd/main.go
 
 static:
-	$(env) go build -o $(dist) -ldflags="$(ldflags) -w -extldflags \"-static\"" cmd/main.go
+	source scripts/bls_build_flags.sh && $(env) go build -o $(dist) -ldflags="$(ldflags) -w -extldflags \"-static\"" cmd/main.go
 
 debug:
-	$(env) go build $(flags) -o $(dist) -ldflags="$(ldflags)" cmd/main.go
+	source scripts/bls_build_flags.sh && $(env) go build $(flags) -o $(dist) -ldflags="$(ldflags)" cmd/main.go
 
 upload-linux:static
 	aws s3 cp dist/erd ${upload-path-linux} --acl public-read

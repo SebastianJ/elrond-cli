@@ -21,16 +21,6 @@ func init() {
 		},
 	}
 
-	cmdConvert := &cobra.Command{
-		Use:   "convert",
-		Short: "Conversion functions",
-		Long:  "Conversion functions",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cmd.Help()
-			return nil
-		},
-	}
-
 	cmdConvertToBech32 := &cobra.Command{
 		Use:   "to-bech32",
 		Short: "Convert from public keys to Bech32",
@@ -51,9 +41,19 @@ func init() {
 	}
 	cmdConvertFromBech32.Flags().StringSliceVar(&keys, "keys", []string{}, "Bech32 keys to convert to public keys, separated by a comma")
 
-	cmdConvert.AddCommand(cmdConvertToBech32)
-	cmdConvert.AddCommand(cmdConvertFromBech32)
-	cmdUtility.AddCommand(cmdConvert)
+	cmdShardForAddress := &cobra.Command{
+		Use:   "shard-for-address",
+		Short: "Detect shard for a given address",
+		Long:  "Detect shard for a given address",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return detectShardForAddress(cmd)
+		},
+	}
+	cmdShardForAddress.Flags().StringSliceVar(&keys, "keys", []string{}, "Public keys to check shard for")
+
+	cmdUtility.AddCommand(cmdConvertToBech32)
+	cmdUtility.AddCommand(cmdConvertFromBech32)
+	cmdUtility.AddCommand(cmdShardForAddress)
 	RootCmd.AddCommand(cmdUtility)
 }
 
@@ -83,7 +83,23 @@ func convertKeysFromBech32(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Bech32: %s - key: %s\n", bech32, key)
+		fmt.Printf("%s\n", key)
+	}
+
+	return nil
+}
+
+func detectShardForAddress(cmd *cobra.Command) error {
+	if len(keys) == 0 {
+		return errors.New("please provide keys to convert using --keys")
+	}
+
+	for _, key := range keys {
+		shardID, err := utils.IdentifyAddressShard(key)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Key: %s - shard: %d\n", key, shardID)
 	}
 
 	return nil

@@ -3,9 +3,9 @@ module github.com/SebastianJ/elrond-cli
 go 1.13
 
 require (
-	github.com/SebastianJ/elrond-sdk v0.0.0-20200610145356-1c11bf084d07
-	github.com/ethereum/go-ethereum v1.9.14 // indirect
-	github.com/json-iterator/go v1.1.6 // indirect
+	github.com/ElrondNetwork/elrond-go v1.0.130 // indirect
+	github.com/SebastianJ/elrond-sdk v0.0.0-20200612110712-912019d031b5
+	github.com/davecgh/go-spew v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v0.0.5
 )
