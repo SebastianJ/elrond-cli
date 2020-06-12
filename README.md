@@ -2,6 +2,26 @@
 
 Elrond CLI is a CLI tool that aims users to interact with Elrond's blockchain using a set of CLI commands.
 
+## Compilation
+
+In order to compile the binary you have to do the following:
+```
+mkdir -p $GOPATH/src/github.com/herumi
+cd $GOPATH/src/github.com/herumi
+git clone https://github.com/herumi/mcl
+git clone https://github.com/herumi/bls
+
+mkdir -p $GOPATH/src/github.com/SebastianJ
+git clone https://github.com/SebastianJ/elrond-sdk
+git clone https://github.com/SebastianJ/elrond-cli
+```
+
+Compile the binary
+```
+cd $GOPATH/src/github.com/SebastianJ/elrond-cli
+make all
+```
+
 ## Installation
 
 Install the CLI using:

@@ -15,13 +15,15 @@ env := GO111MODULE=on
 DIR := ${CURDIR}
 
 all:
-	source scripts/bls_build_flags.sh && $(env) go build -o $(dist) -ldflags="$(ldflags)" cmd/main.go
+	source $(shell go env GOPATH)/src/github.com/SebastianJ/elrond-sdk/scripts/bls_build_flags.sh && $(env) go build -o $(dist) -ldflags="$(ldflags)" cmd/main.go
 
 static:
-	source scripts/bls_build_flags.sh && $(env) go build -o $(dist) -ldflags="$(ldflags) -w -extldflags \"-static\"" cmd/main.go
+	make -C $(shell go env GOPATH)/src/github.com/herumi/mcl
+	make -C $(shell go env GOPATH)/src/github.com/herumi/bls BLS_SWAP_G=1
+	source $(shell go env GOPATH)/src/github.com/SebastianJ/elrond-sdk/scripts/bls_build_flags.sh && $(env) go build -o $(dist) -ldflags="$(ldflags) -w -extldflags \"-static\"" cmd/main.go
 
 debug:
-	source scripts/bls_build_flags.sh && $(env) go build $(flags) -o $(dist) -ldflags="$(ldflags)" cmd/main.go
+	source $(shell go env GOPATH)/src/github.com/SebastianJ/elrond-sdk/scripts/bls_build_flags.sh && $(env) go build $(flags) -o $(dist) -ldflags="$(ldflags)" cmd/main.go
 
 upload-linux:static
 	aws s3 cp dist/erd ${upload-path-linux} --acl public-read
