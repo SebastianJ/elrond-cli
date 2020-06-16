@@ -11,6 +11,7 @@ import (
 
 var (
 	includeAddress bool
+	includeNonce   bool
 	addresses      []string
 )
 
@@ -25,6 +26,7 @@ func init() {
 		},
 	}
 	cmdBalance.Flags().BoolVar(&includeAddress, "include-address", false, "Include the address in the balance output")
+	cmdBalance.Flags().BoolVar(&includeNonce, "include-nonce", false, "Include the nonce in the balance output")
 
 	cmdBalances := &cobra.Command{
 		Use:   "balances",
@@ -36,6 +38,7 @@ func init() {
 	}
 	cmdBalances.Flags().StringSliceVar(&addresses, "addresses", []string{}, "Addresses to check balances for")
 	cmdBalances.Flags().BoolVar(&includeAddress, "include-address", false, "Include the address in the balance output")
+	cmdBalances.Flags().BoolVar(&includeNonce, "include-nonce", false, "Include the nonce in the balance output")
 
 	RootCmd.AddCommand(cmdBalance)
 	RootCmd.AddCommand(cmdBalances)
@@ -51,16 +54,12 @@ func checkBalance(cmd *cobra.Command, args []string) error {
 	client := api.Client{Host: cmdConfig.Persistent.Endpoint}
 	client.Initialize()
 
-	account, err := client.GetBalance(address)
+	account, err := client.GetAccount(address)
 	if err != nil {
 		return errors.New("failed to retrieve balance")
 	}
 
-	if includeAddress {
-		fmt.Println(fmt.Sprintf("Address: %s, balance: %f", account.Address, account.Balance))
-	} else {
-		fmt.Println(fmt.Sprintf("%f", account.Balance))
-	}
+	output(account)
 
 	return nil
 }
@@ -75,21 +74,33 @@ func checkBalances(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, account := range accounts {
-		if includeAddress {
-			fmt.Println(fmt.Sprintf("Address: %s, balance: %f", account.Address, account.Balance))
-		} else {
-			fmt.Println(fmt.Sprintf("%f", account.Balance))
-		}
+		output(account)
 	}
 
 	return nil
+}
+
+func output(account api.Account) {
+	output := ""
+
+	if includeAddress {
+		output = fmt.Sprintf("Address: %s, balance: %f", account.Address, account.Balance)
+	} else {
+		output = fmt.Sprintf("%f", account.Balance)
+	}
+
+	if includeNonce {
+		output = fmt.Sprintf("%s, nonce: %d", output, account.Nonce)
+	}
+
+	fmt.Printf("%s\n", output)
 }
 
 func getBalances(client api.Client) ([]api.Account, error) {
 	accounts := []api.Account{}
 
 	for _, address := range addresses {
-		account, err := client.GetBalance(address)
+		account, err := client.GetAccount(address)
 		if err != nil {
 			return accounts, errors.Errorf("failed to retrieve balance for address %s", address)
 		}

@@ -61,7 +61,7 @@ func sendTransaction(cmd *cobra.Command) error {
 		return err
 	}
 
-	txHash, err := transactions.SendTransaction(
+	_, txHash, err := transactions.SendTransaction(
 		wallet,
 		cmdConfig.Tx.To,
 		cmdConfig.Tx.Amount,
@@ -75,7 +75,7 @@ func sendTransaction(cmd *cobra.Command) error {
 		return err
 	}
 
-	fmt.Println(fmt.Sprintf("Success! Your pending transaction hash is: %s", txHash))
+	fmt.Println(fmt.Sprintf("Success! Tx hash: %s", txHash))
 
 	if cmdConfig.Tx.Sleep > 0 {
 		time.Sleep(time.Duration(cmdConfig.Tx.Sleep) * time.Second)
