@@ -40,8 +40,20 @@ func init() {
 	cmdBalances.Flags().BoolVar(&includeAddress, "include-address", false, "Include the address in the balance output")
 	cmdBalances.Flags().BoolVar(&includeNonce, "include-nonce", false, "Include the nonce in the balance output")
 
+	cmdNonce := &cobra.Command{
+		Use:   "nonce",
+		Short: "Check address nonce",
+		Long:  "Check address nonce",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return checkNonce(cmd, args)
+		},
+	}
+	cmdNonce.Flags().BoolVar(&includeAddress, "include-address", false, "Include the address in the balance output")
+
 	RootCmd.AddCommand(cmdBalance)
 	RootCmd.AddCommand(cmdBalances)
+	RootCmd.AddCommand(cmdNonce)
 }
 
 func checkBalance(cmd *cobra.Command, args []string) error {
@@ -76,6 +88,34 @@ func checkBalances(cmd *cobra.Command, args []string) error {
 	for _, account := range accounts {
 		output(account)
 	}
+
+	return nil
+}
+
+func checkNonce(cmd *cobra.Command, args []string) error {
+	address := args[0]
+
+	if address == "" {
+		return errors.New("please provide a valid address")
+	}
+
+	client := api.Client{Host: cmdConfig.Persistent.Endpoint}
+	client.Initialize()
+
+	account, err := client.GetAccount(address)
+	if err != nil {
+		return errors.New("failed to retrieve balance")
+	}
+
+	output := ""
+
+	if includeAddress {
+		output = fmt.Sprintf("Address: %s, nonce: %d", account.Address, account.Nonce)
+	} else {
+		output = fmt.Sprintf("%d", account.Nonce)
+	}
+
+	fmt.Printf("%s\n", output)
 
 	return nil
 }

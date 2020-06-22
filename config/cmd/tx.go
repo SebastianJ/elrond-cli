@@ -14,5 +14,9 @@ type TxFlags struct {
 	Data                 string
 	Sleep                int64
 	ConfigPath           string
+	Count                int64
+	GasPrice             int64
+	GasLimit             int64
+	Proxy                string
 	ForceAPINonceLookups bool
 }

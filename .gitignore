@@ -18,6 +18,7 @@ go.mod.dev
 
 /configs
 /keys
+/scripts/misc
 
 /vendor
 /esdata

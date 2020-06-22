@@ -1,14 +1,20 @@
 package commands
 
 import (
+	"encoding/hex"
 	"fmt"
+	"strings"
 
-	"github.com/SebastianJ/elrond-sdk/utils"
+	sdkTransactions "github.com/SebastianJ/elrond-sdk/transactions"
+	sdkUtils "github.com/SebastianJ/elrond-sdk/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
-var keys []string
+var (
+	keys           []string
+	numberOfShards uint32 = 2
+)
 
 func init() {
 	cmdUtility := &cobra.Command{
@@ -63,7 +69,7 @@ func convertKeysToBech32(cmd *cobra.Command) error {
 	}
 
 	for _, key := range keys {
-		bech32, err := utils.PublicKeyToBech32(key)
+		bech32, err := sdkUtils.PublicKeyToBech32(key)
 		if err != nil {
 			return err
 		}
@@ -79,7 +85,7 @@ func convertKeysFromBech32(cmd *cobra.Command) error {
 	}
 
 	for _, bech32 := range keys {
-		key, err := utils.Bech32ToPublicKey(bech32)
+		key, err := sdkUtils.Bech32ToPublicKey(bech32)
 		if err != nil {
 			return err
 		}
@@ -89,17 +95,31 @@ func convertKeysFromBech32(cmd *cobra.Command) error {
 	return nil
 }
 
-func detectShardForAddress(cmd *cobra.Command) error {
+func detectShardForAddress(cmd *cobra.Command) (err error) {
 	if len(keys) == 0 {
 		return errors.New("please provide keys to convert using --keys")
 	}
 
 	for _, key := range keys {
-		shardID, err := utils.IdentifyAddressShard(key)
+		var addressBytes []byte
+
+		if strings.HasPrefix(key, "erd") {
+			addressBytes, err = sdkUtils.Bech32ToPublicKeyBytes(key)
+			if err != nil {
+				return err
+			}
+		} else {
+			addressBytes, err = hex.DecodeString(key)
+			if err != nil {
+				return err
+			}
+		}
+
+		shardID := sdkTransactions.CalculateShardForAddress(addressBytes, numberOfShards)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Key: %s - shard: %d\n", key, shardID)
+		fmt.Printf("Address: %s - shard: %d\n", key, shardID)
 	}
 
 	return nil
